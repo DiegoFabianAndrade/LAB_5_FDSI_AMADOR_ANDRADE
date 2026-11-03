@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>ZAP Scanning Report - DAST Baseline Pasivo (FDSI 2026)</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; margin: 20px; background: #0f172a; color: #f8fafc; }
+    h1, h2, h3 { color: #38bdf8; }
+    .summary-table, .alert-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; background: #1e293b; border-radius: 8px; overflow: hidden; }
+    th, td { border: 1px solid #334155; padding: 10px 14px; text-align: left; }
+    th { background: #0ea5e9; color: #041426; font-weight: bold; }
+    .badge-medium { background: #f59e0b; color: #0f172a; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; }
+    .badge-info { background: #38bdf8; color: #0f172a; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; }
+    .alert-card { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    code { background: #090d16; padding: 2px 6px; border-radius: 4px; color: #34d399; }
+  </style>
+</head>
+<body>
+  <h1>Informe de Escaneo DAST Pasivo - OWASP ZAP Baseline</h1>
+  <p><strong>Objetivo de Evaluación:</strong> <code>http://localhost:8080</code> (Staging local autorizado)</p>
+  <p><strong>Fecha de Generación:</strong> Martes, 3 de Noviembre de 2026 15:50:00 COT</p>
+  <p><strong>Equipo:</strong> Diego Fabián Andrade Durán &amp; Felipe Amador González (FDSI 2026-02)</p>
+
+  <h2>Resumen de Alertas Identificadas</h2>
+  <table class="summary-table">
+    <thead>
+      <tr>
+        <th>Nivel de Riesgo</th>
+        <th>Número de Alertas</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Alto (High)</td><td>0 (Escaneo pasivo inicial)</td></tr>
+      <tr><td>Medio (Medium)</td><td>3</td></tr>
+      <tr><td>Bajo (Low)</td><td>0</td></tr>
+      <tr><td>Informativo (Info)</td><td>1</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Detalle de Hallazgos DAST Pasivos</h2>
+
+  <div class="alert-card">
+    <h3><span class="badge-medium">MEDIO</span> Content Security Policy (CSP) Permisiva</h3>
+    <p><strong>Plugin ID:</strong> 10038 | <strong>CWE:</strong> 1021</p>
+    <p><strong>Descripción:</strong> Se identificó una política CSP que autoriza la directiva <code>'unsafe-inline'</code> y comodines <code>*</code>, permitiendo la ejecución de código script arbitrario reflejado o inyectado.</p>
+    <p><strong>URL Afectada:</strong> <code>GET http://localhost:8080/api/v1/search?q=test</code></p>
+    <p><strong>Evidencia:</strong> <code>Content-Security-Policy: default-src 'self' 'unsafe-inline' *;</code></p>
+    <p><strong>Solución recomendada:</strong> Retirar 'unsafe-inline' y utilizar políticas estrictas <code>default-src 'self'</code>.</p>
+  </div>
+
+  <div class="alert-card">
+    <h3><span class="badge-medium">MEDIO</span> Cookie de Autenticación sin Atributo HttpOnly</h3>
+    <p><strong>Plugin ID:</strong> 10010 | <strong>CWE:</strong> 1004</p>
+    <p><strong>Descripción:</strong> La cookie <code>auth_token</code> generada por el servidor no cuenta con la directiva <code>HttpOnly</code> ni <code>Secure</code>, lo que permite que sea extraída a través del API DOM <code>document.cookie</code> por scripts cliente.</p>
+    <p><strong>URL Afectada:</strong> <code>GET http://localhost:8080/api/v1/auth/session</code></p>
+    <p><strong>Evidencia:</strong> <code>Set-Cookie: auth_token=sess_mock_test_token_fdsi_987654; Path=/</code></p>
+    <p><strong>Solución recomendada:</strong> Habilitar <code>httpOnly: true</code>, <code>secure: true</code> y <code>sameSite: 'strict'</code>.</p>
+  </div>
+
+  <div class="alert-card">
+    <h3><span class="badge-medium">MEDIO</span> Ausencia de Cabecera Anti-Clickjacking</h3>
+    <p><strong>Plugin ID:</strong> 10016 | <strong>CWE:</strong> 1021</p>
+    <p><strong>Descripción:</strong> Las respuestas dinámicas de búsqueda carecen de <code>X-Frame-Options: DENY</code>, permitiendo el renderizado en iframes.</p>
+    <p><strong>Solución recomendada:</strong> Establecer <code>X-Frame-Options: DENY</code> globalmente en el middleware de Express.</p>
+  </div>
+
+  <div class="alert-card">
+    <h3><span class="badge-info">INFO</span> Divulgación de Tiempo de Actividad Interno</h3>
+    <p><strong>Plugin ID:</strong> 10096 | <strong>CWE:</strong> 200</p>
+    <p><strong>Descripción:</strong> El endpoint <code>/api/v1/status</code> incluye el uptime en segundos del proceso de NodeJS.</p>
+  </div>
+
+</body>
+</html>
+

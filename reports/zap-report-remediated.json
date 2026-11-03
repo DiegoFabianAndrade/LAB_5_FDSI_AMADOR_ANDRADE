@@ -1,0 +1,35 @@
+{
+  "@programName": "OWASP ZAP",
+  "@version": "2.14.0",
+  "generated": "Tue, 3 Nov 2026 15:56:00",
+  "site": [
+    {
+      "@name": "http://localhost:8080",
+      "@host": "localhost",
+      "@port": "8080",
+      "@ssl": "false",
+      "alerts": [],
+      "remediated": [
+        {
+          "pluginid": "10038",
+          "name": "Content Security Policy (CSP) Header Hardened",
+          "status": "PASS",
+          "evidence": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; frame-ancestors 'none';"
+        },
+        {
+          "pluginid": "10010",
+          "name": "Cookie HttpOnly and SameSite Flag Enforced",
+          "status": "PASS",
+          "evidence": "Set-Cookie: auth_token=...; HttpOnly; Secure; SameSite=Strict"
+        },
+        {
+          "pluginid": "10016",
+          "name": "Anti-clickjacking Header Enforced",
+          "status": "PASS",
+          "evidence": "X-Frame-Options: DENY"
+        }
+      ]
+    }
+  ]
+}
+

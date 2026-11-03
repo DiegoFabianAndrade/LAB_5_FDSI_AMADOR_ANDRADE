@@ -18,8 +18,8 @@
   "author": "Diego Fabian Andrade Duran & Felipe Amador Gonzalez",
   "license": "MIT",
   "dependencies": {
-    "express": "4.19.2",
+    "express": "4.22.3",
     "cors": "2.8.5",
-    "cookie-parser": "1.4.6"
+    "cookie-parser": "1.4.7"
   }
 }

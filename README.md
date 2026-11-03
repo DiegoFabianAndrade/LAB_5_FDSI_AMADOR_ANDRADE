@@ -94,85 +94,77 @@ El portal estara disponible en `http://localhost:8080`.
 
 ---
 
-## 5. Guia Paso a Paso para la Sustentacion en Vivo (Demostracion de 5 Minutos)
+## 5. Guia de Sustentacion y Demostracion de Evidencias en Vivo
 
-Esta seccion detalla la secuencia exacta, comandos, rutas, puertos y evidencias para presentar el laboratorio ante el profesor en vivo.
+A continuacion se presenta la secuencia tecnica para la reproduccion y verificacion en vivo de los controles de seguridad implementados en el proyecto.
 
-### Minuto 1: Inicio del servidor y presentacion de la plataforma
-1. Abrir terminal en la carpeta `app`:
+### Paso 1: Despliegue del servicio y revision de la arquitectura
+1. **Ejecucion del backend:**
    ```bash
    cd app
    npm start
    ```
-2. Abrir en el navegador:
-   ```text
-   http://localhost:8080
-   ```
-3. Explicar brevemente: La plataforma es *MuvAutomation Incident Hub*, un portal de triaje de alertas de seguridad. En la linea base inicial tenia un fallo critico de inyeccion de codigo en el buscador y configuraciones debiles de cabeceras.
+2. **Acceso al portal:**
+   - URL: `http://localhost:8080`
+   - Puerto de escucha: `8080` (HTTP local autorizado).
+3. **Contexto del sistema:** La aplicacion *MuvAutomation Incident Hub* opera como un centro de triaje de alertas. En su linea base presentaba fallos en el manejo de entradas dinamicas y politicas de cabeceras incompletas, las cuales fueron auditadas y mitigadas.
 
 ---
 
-### Minuto 2: Demostracion de la vulnerabilidad corregida (Pentest controlado de XSS)
-1. Enviar en el navegador la peticion de prueba con payload inocuo:
-   ```text
-   http://localhost:8080/api/v1/search?q=%3Cu%3EPrueba_Controlada_FDSI%3C%2Fu%3E
-   ```
-2. O desde otra terminal con comando directo:
-   ```bash
-   curl -s "http://localhost:8080/api/v1/search?q=%3Cu%3EPrueba_Controlada_FDSI%3C%2Fu%3E"
-   ```
-3. **Que mostrar al profesor:**
-   - La etiqueta `<u>` **no se renderiza ni se ejecuta**.
-   - En el codigo fuente HTML aparece codificada como `&lt;u&gt;Prueba_Controlada_FDSI&lt;/u&gt;`.
-   - Explicar la funcion `escapeHtml()` en `app/server.js` que neutraliza `< > & " '` antes de generar la respuesta.
+### Paso 2: Validacion de la mitigacion de XSS reflejado (Pentest controlado)
+1. **Peticion de prueba con payload inocuo:**
+   - Acceso desde navegador:
+     ```text
+     http://localhost:8080/api/v1/search?q=%3Cu%3EPrueba_Controlada_FDSI%3C%2Fu%3E
+     ```
+   - O mediante peticion HTTP por terminal:
+     ```bash
+     curl -s "http://localhost:8080/api/v1/search?q=%3Cu%3EPrueba_Controlada_FDSI%3C%2Fu%3E"
+     ```
+2. **Comportamiento observado y control aplicado:**
+   - La etiqueta `<u>` no se renderiza como elemento de formato en el navegador.
+   - En el HTML retornado se comprueba la codificacion de entidades: `&lt;u&gt;Prueba_Controlada_FDSI&lt;/u&gt;`.
+   - **Mecanismo defensivo:** La funcion `escapeHtml()` en `app/server.js` neutraliza los caracteres `< > & " '` antes de la interpolacion en la plantilla.
 
 ---
 
-### Minuto 3: Demostracion de cabeceras de seguridad y proteccion de cookies (DAST)
-1. Consultar en terminal el endpoint de sesion con sus cabeceras:
+### Paso 3: Verificacion de cabeceras de seguridad y atributos de sesion (DAST pasivo)
+1. **Consulta del endpoint de autenticacion simulada:**
    ```bash
    curl -i http://localhost:8080/api/v1/auth/session
    ```
-2. **Que resaltar al profesor:**
-   - `Set-Cookie: auth_token=...; HttpOnly; Secure; SameSite=Strict`: Evita que scripts en el cliente roben la cookie de sesion mediante `document.cookie`.
-   - `Content-Security-Policy`: Sin directiva `'unsafe-inline'` para scripts.
-   - `X-Frame-Options: DENY`: Proteccion estricta contra ataques de Clickjacking.
-   - `X-Content-Type-Options: nosniff`: Evita suplantacion de tipo MIME.
-   - Ausencia total de la cabecera `X-Powered-By` (reduccion de huella digital).
+2. **Controles verificados en las cabeceras de respuesta:**
+   - `Set-Cookie: auth_token=...; HttpOnly; Secure; SameSite=Strict`: Previene la extraccion del token de sesion mediante scripts maliciosos en `document.cookie`.
+   - `Content-Security-Policy: default-src 'self'`: Restringe la ejecucion de scripts inline no autorizados (`'unsafe-inline'`).
+   - `X-Frame-Options: DENY`: Bloquea el renderizado en iframes para prevenir ataques de Clickjacking.
+   - `X-Content-Type-Options: nosniff`: Evita la reinterpretacion arbitraria de tipos MIME.
+   - Supresion de `X-Powered-By` para evitar la exposicion del framework backend.
 
 ---
 
-### Minuto 4: Ejecucion en vivo de pruebas automatizadas y chequeo de dependencias (SCA)
-1. Ejecutar las pruebas automatizadas de regresion:
+### Paso 4: Ejecucion de la suite de regresion automatizada y analisis de dependencias (SCA)
+1. **Ejecucion de pruebas automatizadas:**
    ```bash
    npm test
    ```
-   - Mostrar que las 4 pruebas pasan en verde inmediatamente:
-     - Prevencion de `<script>` en busqueda.
-     - Sanitizacion de etiquetas HTML.
-     - Cabeceras de seguridad activas.
-     - Flags de cookies verificados.
-2. Ejecutar la revision de dependencias:
+   - Confirma la aprobacion del 100% de los casos de prueba (4 de 4 pruebas pasando en verde):
+     - Prevencion de `<script>` en busquedas.
+     - Sanitizacion de etiquetas HTML arbitrarias.
+     - Presencia de cabeceras HTTP de proteccion.
+     - Configuracion correcta de los atributos de la cookie de sesion.
+2. **Auditoria de dependencias de terceros:**
    ```bash
    npm audit
    ```
-   - Mostrar la salida `found 0 vulnerabilities`, evidenciando que se resolvieron las alertas de Dependabot al actualizar a `express@^4.22.3` y `cookie-parser@^1.4.7`.
+   - Salida: `found 0 vulnerabilities`, evidenciando la resolucion de los avisos de seguridad ReDoS y DoS tras actualizar `express` y `cookie-parser`.
 
 ---
 
-### Minuto 5: Evidencias de los escaneos y Pull Request en GitHub
-1. **Tablero Interactivo (8 etapas completadas):**
-   - Abrir en el navegador el archivo local:
-     ```text
-     AppSec_Lab_FSI.html
-     ```
-   - Mostrar la barra de progreso en verde: **8 de 8 etapas completadas**.
-2. **Reportes de Escaneo:**
-   - Abrir en el navegador `reports/zap-report.html` (informe de OWASP ZAP Baseline).
-   - Mostrar en el editor `reports/semgrep.json` y `reports/gitleaks-results.sarif`.
-3. **Pull Request en GitHub:**
-   - Abrir el enlace del PR:
-     ```text
-     https://github.com/DiegoFabianAndrade/LAB_5_FDSI_AMADOR_ANDRADE/pull/10
-     ```
-   - Mostrar los commits limpios, el checklist de seguridad marcado y los checks de GitHub Actions (CodeQL y Semgrep) en verde.
+### Paso 5: Revision del flujo de trabajo DevSecOps en GitHub (SAST, Secretos y Pull Request)
+1. **Tablero interactivo de seguimiento:**
+   - Visualizacion del archivo local `AppSec_Lab_FSI.html` con las 8 etapas completadas y enlaces a evidencias.
+2. **Informes tecnicos generados:**
+   - Reporte DAST pasivo: `reports/zap-report.html` y `reports/zap-report.json`.
+   - Reportes SAST y Secretos: `reports/semgrep.json` y `reports/gitleaks-results.sarif`.
+3. **Trazabilidad en GitHub:**
+   - [Pull Request #10](https://github.com/DiegoFabianAndrade/LAB_5_FDSI_AMADOR_ANDRADE/pull/10): Contiene los commits de remediacion, el checklist de seguridad diligenciado y la aprobacion de los flujos de trabajo en GitHub Actions (CodeQL y Semgrep).

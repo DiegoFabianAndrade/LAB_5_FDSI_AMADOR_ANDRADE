@@ -1,0 +1,21 @@
+=======================================================
+INVENTARIO DE ACTIVOS Y SERVICIOS - MUV AUTOMATION HUB
+LABORATORIO FDSI 2026 - ENTORNO CONTROLADO DE PRUEBAS
+=======================================================
+
+1. Servidor Web Principal
+   - Hostname: WEB-LAB-01
+   - IP Interna: 10.0.1.15
+   - Rol: Gateway de seguridad y presentacion web
+   - Sistema Operativo: Ubuntu Linux 22.04 LTS
+
+2. API de Triage y Automatizacion
+   - Hostname: API-LAB-01
+   - IP Interna: 10.0.1.20
+   - Rol: Microservicio REST de analisis de eventos Falcon
+   - Tecnologia: Node.js v20+ / Express
+
+3. Base de Datos de Telemetria
+   - Hostname: DB-LAB-01
+   - IP Interna: 10.0.1.30
+   - Rol: Almacenamiento seguro de incidentes y logs de auditoria

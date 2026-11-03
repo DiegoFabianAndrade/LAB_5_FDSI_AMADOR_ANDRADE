@@ -1,0 +1,25 @@
+{
+  "name": "incident-hub-appsec",
+  "version": "1.0.0",
+  "description": "Portal de Gestion de Incidentes y Triaje de Seguridad - MuvAutomation Hub (FDSI 2026)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/security.test.js"
+  },
+  "keywords": [
+    "appsec",
+    "fdsi",
+    "incident-hub",
+    "sast",
+    "dast",
+    "security"
+  ],
+  "author": "Diego Fabian Andrade Duran & Felipe Amador Gonzalez",
+  "license": "MIT",
+  "dependencies": {
+    "express": "4.19.2",
+    "cors": "2.8.5",
+    "cookie-parser": "1.4.6"
+  }
+}

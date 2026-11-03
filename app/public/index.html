@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MuvAutomation Hub - Portal de Incidentes y Seguridad</title>
+  <style>
+    :root {
+      --bg: #0b1324;
+      --card-bg: #14213d;
+      --accent-blue: #38bdf8;
+      --accent-red: #f87171;
+      --accent-green: #34d399;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --border: #243556;
+    }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 2rem;
+    }
+    .container {
+      max-width: 1050px;
+      margin: auto;
+    }
+    .header {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.8rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    }
+    h1 {
+      color: var(--accent-blue);
+      margin: 0 0 0.5rem 0;
+      font-size: 1.8rem;
+    }
+    .subtitle {
+      color: var(--muted);
+      margin: 0 0 1rem 0;
+      font-size: 0.95rem;
+    }
+    .badges {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .badge {
+      padding: 0.3rem 0.7rem;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+    }
+    .badge-env { background: #0284c7; color: white; }
+    .badge-sec { background: #059669; color: white; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.2rem;
+      margin-top: 1.5rem;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.4rem;
+    }
+    .card h2 {
+      font-size: 1.2rem;
+      margin-top: 0;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--accent-blue);
+    }
+    ul { list-style: none; padding: 0; margin: 0; }
+    li { margin-bottom: 0.8rem; }
+    a {
+      color: var(--accent-blue);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+    .desc {
+      color: var(--muted);
+      font-size: 0.82rem;
+      display: block;
+      margin-top: 0.2rem;
+    }
+    .search-box {
+      margin-top: 1.5rem;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.4rem;
+    }
+    input[type="text"] {
+      width: calc(100% - 130px);
+      background: #0a1120;
+      border: 1px solid var(--border);
+      color: white;
+      padding: 0.6rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+    button {
+      background: #0284c7;
+      color: white;
+      border: none;
+      padding: 0.6rem 1.2rem;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover { background: #0369a1; }
+    #searchResult {
+      margin-top: 1rem;
+      padding: 0.8rem;
+      background: #0a1120;
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+    footer {
+      text-align: center;
+      margin-top: 2rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>MuvAutomation Incident Hub</h1>
+      <p class="subtitle">Laboratorio 05: Evaluacion de Seguridad en el Ciclo de Desarrollo (AppSec DevSecOps)</p>
+      <div class="badges">
+        <span class="badge badge-env">Ambiente: Staging Local Autorizado</span>
+        <span class="badge badge-sec">Modulo: Triaje y Telemetria</span>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Servicios y Telemetria</h2>
+        <ul>
+          <li>
+            <a href="/public-inventory.txt">Inventario de Activos (/public-inventory.txt)</a>
+            <span class="desc">Topologia de hosts WEB-LAB-01, API-LAB-01 y DB-LAB-01.</span>
+          </li>
+          <li>
+            <a href="/api/v1/alerts">Listado de Incidentes Falcon (/api/v1/alerts)</a>
+            <span class="desc">Consulta JSON de alertas registradas y severidad.</span>
+          </li>
+          <li>
+            <a href="/api/v1/status">Estado del Sistema (/api/v1/status)</a>
+            <span class="desc">Salud operativa de los agentes de monitoreo.</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h2>Controles de Seguridad (AppSec)</h2>
+        <ul>
+          <li>
+            <a href="/docs/SECURITY.md">Politica y Registro de Seguridad (/docs/SECURITY.md)</a>
+            <span class="desc">Matriz de controles SAST, DAST, SCA y Secret Scanning.</span>
+          </li>
+          <li>
+            <a href="/docs/REPORTE_HALLAZGOS.md">Reporte Tecnico de Hallazgos (/docs/REPORTE_HALLAZGOS.md)</a>
+            <span class="desc">Detalle metodologico y evidencia antes/despues.</span>
+          </li>
+          <li>
+            <a href="/AppSec_Lab_FSI.html">Tablero Interactivo del Laboratorio (/AppSec_Lab_FSI.html)</a>
+            <span class="desc">Ruta guiada de verificacion de las 8 etapas.</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="search-box">
+      <h3 style="margin-top: 0; color: var(--accent-blue);">Buscador de Alertas por Criterio</h3>
+      <form action="/api/v1/search" method="GET">
+        <input type="text" name="q" placeholder="Ingrese palabra clave (ej. Escaneo, Inyeccion, Reconnaissance)..." required>
+        <button type="submit">Buscar</button>
+      </form>
+    </div>
+
+    <footer>
+      Escuela Colombiana de Ingenieria Julio Garavito &mdash; Fundamentos de Seguridad de la Informacion (FDSI)<br>
+      Integrantes: Diego Fabian Andrade Duran &amp; Felipe Amador Gonzalez
+    </footer>
+  </div>
+</body>
+</html>

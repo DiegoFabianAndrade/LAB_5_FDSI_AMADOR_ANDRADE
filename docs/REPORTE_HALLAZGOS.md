@@ -1,62 +1,63 @@
-# Informe Técnico de Hallazgos de Seguridad
+# Informe Tecnico de Hallazgos de Seguridad
 
-**Proyecto:** MuvAutomation Incident Hub  
 **Integrantes:**
-- Diego Fabián Andrade Durán
-- Felipe Amador González  
-**Institución:** Escuela Colombiana de Ingeniería Julio Garavito  
-**Asignatura:** Fundamentos de Seguridad de la Información (FDSI) — 2026-02  
+- Diego Fabian Andrade Duran
+- Felipe Amador Gonzalez  
+**Institucion:** Escuela Colombiana de Ingenieria Julio Garavito  
+**Asignatura:** Fundamentos de Seguridad de la Informacion (FDSI)  
 **Repositorio:** `https://github.com/DiegoFabianAndrade/LAB_5_FDSI_AMADOR_ANDRADE`  
-**Commit de Línea Base:** `9101d191aec1967f3814462f4d0fcc99131e17f2`  
-**Entorno Autorizado:** Staging local controlado (`http://localhost:8080`)  
-**Fecha de Evaluación:** 3 de Noviembre de 2026  
+**Entorno:** Staging local (`http://localhost:8080`)  
 
 ---
 
-## 1. Resumen Ejecutivo
+## 1. Resumen general
 
-Durante el desarrollo del Laboratorio 05, se ejecutó una evaluación integral de seguridad sobre la arquitectura y base de código de la plataforma web **MuvAutomation Incident Hub**. Para ello, se articuló una estrategia DevSecOps basada en cinco capas complementarias: análisis estático (SAST con Semgrep y CodeQL), detección de secretos (Gitleaks y GitHub Secret Scanning), análisis de composición de software (SCA con Dependabot y npm audit), análisis dinámico pasivo (DAST con OWASP ZAP Baseline) y validación manual de hipótesis mediante técnicas de pentesting no destructivo.
+Durante este laboratorio evaluamos la seguridad de la aplicacion web utilizando herramientas en diferentes etapas:
+- Analisis estatico (SAST) con Semgrep y CodeQL.
+- Deteccion de credenciales y secretos con Gitleaks.
+- Analisis de dependencias (SCA) con Dependabot y npm audit.
+- Analisis dinamico pasivo (DAST) con OWASP ZAP.
+- Pruebas manuales controladas (Pentesting).
 
-Los tres riesgos principales identificados fueron:
-1. **Inyección de código del lado del cliente (Reflected XSS - CWE-79):** Identificado en el endpoint de búsqueda `/api/v1/search`, donde el parámetro de consulta `q` era interpolado directamente en el cuerpo HTML sin validación ni codificación contextual.
-2. **Deficiencias en la configuración de cabeceras y cookies de sesión (CWE-1004 / CWE-1021):** Ausencia del atributo `HttpOnly` y `Secure` en cookies de autenticación, sumado a una política de seguridad de contenido (CSP) excesivamente permisiva con directiva `'unsafe-inline'`.
-3. **Uso de dependencias de terceros vulnerables (SCA / ReDoS y DoS en bibliotecas base):** Presencia de versiones de `express` y sus submódulos (`body-parser`, `path-to-regexp`, `cookie`, `send`) con avisos de seguridad críticos abiertos en Dependabot.
+Los hallazgos principales fueron:
+1. **XSS Reflejado en la busqueda (CWE-79):** En el endpoint `/api/v1/search`, el parametro `q` se concatenaba directamente en el HTML devuelto sin sanitizar.
+2. **Cookies de sesion sin flags de seguridad (CWE-1004):** La cookie de autenticacion no tenia configurados los atributos `HttpOnly`, `Secure` ni `SameSite`, y la politica de CSP permitia scripts inline.
+3. **Dependencias desactualizadas (SCA):** Version de Express desactualizada en `package.json` con vulnerabilidades reportadas en Dependabot.
 
-Todos los hallazgos críticos fueron debidamente remediados en la rama `security/lab-fsi`, implementando funciones de codificación de entidades HTML, middleware de endurecimiento de cabeceras HTTP, parametrización segura de cookies y actualización a dependencias parcheadas. La eficacia de las correcciones fue validada mediante un conjunto automatizado de pruebas unitarias y de regresión (`npm test`).
-
----
-
-## 2. Metodología de Evaluación
-
-El proceso siguió rigurosamente la secuencia de ejecución establecida para entornos de pruebas autorizados:
-$$\text{Alcance y Línea Base} \longrightarrow \text{SAST (Semgrep / CodeQL)} \longrightarrow \text{Secret Detection} \longrightarrow \text{SCA (Dependabot)} \longrightarrow \text{DAST Pasivo} \longrightarrow \text{Pentesting Controlado} \longrightarrow \text{Remediación} \longrightarrow \text{Reanálisis y Regresión}$$
+Todas estas vulnerabilidades fueron corregidas en la rama `security/lab-fsi` y se verificaron con pruebas automatizadas (`npm test`).
 
 ---
 
-## 3. Detalle de Hallazgos Identificados
+## 2. Metodologia de evaluacion
 
-### Hallazgo F-01: Cross-Site Scripting Reflejado en Búsqueda de Alertas
-- **Título:** Reflected Cross-Site Scripting (XSS) vía parámetro de consulta HTTP.
-- **Categoría OWASP / CWE:** OWASP Top 10 A03:2021 — Inyección | CWE-79: Improper Neutralization of Input During Web Page Generation.
-- **Severidad y Justificación:** **Alta** (CVSS v3.1: 7.5 - `CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N`). Un atacante podría engañar a un operador para hacer clic en un enlace malicioso que ejecute scripts en el contexto de la aplicación, facilitando el robo de tokens o la ejecución de acciones no autorizadas.
-- **Evidencia Técnica (Línea Base):**
-  - **Detección CodeQL:** Alerta `js/reflected-xss` en `app/server.js:95`.
-  - **Detección Semgrep:** Regla `javascript.express.security.injection.raw-html-format.raw-html-format`.
-  - **Código vulnerable original:**
-    ```javascript
-    const query = req.query.q || '';
-    const respuestaHtml = `<h2>Resultados para la consulta: ${query}</h2>`;
-    res.send(respuestaHtml);
-    ```
-- **Impacto:**
-  - *Confidencialidad:* Alta (potencial exfiltración de cookies no protegidas o datos sensibles visualizados).
-  - *Integridad:* Alta (capacidad de manipular el DOM y alterar el comportamiento visual del portal).
-  - *Disponibilidad:* Baja (no compromete directamente el tiempo de actividad del servicio backend).
-- **Pasos de Validación Segura (Pentest Controlado):**
-  1. Se envió una petición inocua al entorno local: `GET /api/v1/search?q=%3Cu%3EPrueba_Controlada_FDSI%3C%2Fu%3E`.
-  2. Se analizó la respuesta HTTP generada: el servidor devolvió código `200 OK` con la etiqueta HTML `<u>` renderizada en claro dentro del elemento `<h2>`.
-- **Medida de Remediación Aplicada:**
-  Se desarrolló la función defensiva `escapeHtml()` para neutralizar metacaracteres HTML (`<`, `>`, `&`, `"`, `'`):
+El proceso de analisis se desarrollo en el siguiente orden:
+Linea Base -> SAST (Semgrep y CodeQL) -> Deteccion de secretos -> SCA (Dependabot) -> DAST pasivo (ZAP) -> Pentesting manual -> Remediacion -> Pruebas de regresion
+
+---
+
+## 3. Detalle de los hallazgos
+
+### Hallazgo 1: Cross-Site Scripting (XSS) Reflejado en la busqueda
+- **Descripcion:** En el endpoint `GET /api/v1/search`, la aplicacion recibia el parametro `q` y lo insertaba directamente en la respuesta HTML sin escapar caracteres especiales.
+- **Clasificacion:** CWE-79 / OWASP A03:2021 (Inyeccion).
+- **Severidad:** Alta. Si un atacante envia un enlace con codigo JavaScript malicioso a un usuario autenticado, el script se ejecuta en el navegador de la victima.
+- **Herramientas que lo detectaron:**
+  - CodeQL: regla `js/reflected-xss` en `app/server.js`.
+  - Semgrep: regla `javascript.express.security.injection.raw-html-format`.
+- **Codigo vulnerable original:**
+  ```javascript
+  const query = req.query.q || '';
+  const respuestaHtml = `<h2>Resultados para la consulta: ${query}</h2>`;
+  res.send(respuestaHtml);
+  ```
+- **Validacion manual (Pentest):**
+  Se probo la peticion:
+  ```bash
+  curl -s "http://localhost:8080/api/v1/search?q=%3Cu%3EPrueba_Controlada_FDSI%3C%2Fu%3E"
+  ```
+  El servidor respondio con la etiqueta `<u>` en claro, confirmando que el HTML se interpretaba directamente.
+- **Correccion aplicada:**
+  Se creo la funcion `escapeHtml()` para sanitizar los caracteres `< > & " '` antes de generar el HTML:
   ```javascript
   function escapeHtml(unsafeText) {
     if (typeof unsafeText !== 'string') return '';
@@ -68,27 +69,19 @@ $$\text{Alcance y Línea Base} \longrightarrow \text{SAST (Semgrep / CodeQL)} \l
       .replace(/'/g, '&#39;');
   }
   ```
-  El valor devuelto se codifica antes de insertarse en el cuerpo de la respuesta, garantizando que el navegador lo interprete exclusivamente como texto plano.
-- **Resultado del Reescaneo y Prueba de Regresión:**
-  - Al reenviar la petición de prueba, la respuesta reflejó `&lt;u&gt;Prueba_Controlada_FDSI&lt;/u&gt;`.
-  - La prueba unitaria automatizada en `app/test/security.test.js` confirmó que la etiqueta `<script>` y metacaracteres HTML quedan completamente neutralizados.
+- **Verificacion:**
+  Al repetir la peticion, el servidor devuelve `&lt;u&gt;Prueba_Controlada_FDSI&lt;/u&gt;`, asegurando que el navegador solo lo interprete como texto plano. Tambien se valida en los tests con `npm test`.
 
 ---
 
-### Hallazgo F-02: Emisión de Cookie de Sesión sin Flags de Seguridad
-- **Título:** Falta de atributos `HttpOnly`, `Secure` y `SameSite` en cookie de autenticación.
-- **Categoría OWASP / CWE:** OWASP Top 10 A05:2021 — Configuración de Seguridad Incorrecta | CWE-1004 (Sensitive Cookie Without 'HttpOnly' Flag) y CWE-614 (Sensitive Cookie in HTTPS Session Without 'Secure' Attribute).
-- **Severidad y Justificación:** **Media** (CVSS v3.1: 5.3). Al no contar con `HttpOnly`, cualquier vulnerabilidad de XSS (como la identificada en F-01) permite que scripts del atacante lean directamente la cookie mediante `document.cookie`.
-- **Evidencia Técnica (Línea Base):**
-  - **Detección OWASP ZAP Baseline:** Alerta ID `10010` (Cookie No HttpOnly Flag).
-  - **Cabecera original observada:**
-    `Set-Cookie: auth_token=sess_mock_test_token_fdsi_987654; Path=/`
-- **Impacto:**
-  - *Confidencialidad:* Alta (fuga de credenciales de sesión ante ataques en el cliente).
-  - *Integridad:* Media (secuestro de sesión del usuario).
-  - *Disponibilidad:* Nula.
-- **Medida de Remediación Aplicada:**
-  Se reconfiguró la llamada en `app/server.js`:
+### Hallazgo 2: Cookie de sesion sin atributos de seguridad
+- **Descripcion:** La cookie `auth_token` generada en `/api/v1/auth/session` se enviaba sin los flags `HttpOnly`, `Secure` ni `SameSite`.
+- **Clasificacion:** CWE-1004 / OWASP A05:2021 (Configuracion Incorrecta de Seguridad).
+- **Severidad:** Media. Al no tener `HttpOnly`, cualquier script inyectado mediante XSS puede leer la cookie con `document.cookie` y robar la sesion.
+- **Herramienta que lo detecto:**
+  - OWASP ZAP (Alerta 10010 - Cookie No HttpOnly Flag).
+- **Correccion aplicada:**
+  Se modifico la configuracion de la cookie en `app/server.js`:
   ```javascript
   res.cookie('auth_token', token, {
     httpOnly: true,
@@ -98,45 +91,51 @@ $$\text{Alcance y Línea Base} \longrightarrow \text{SAST (Semgrep / CodeQL)} \l
     path: '/'
   });
   ```
-- **Resultado del Reescaneo:**
-  - Cabecera verificada: `Set-Cookie: auth_token=...; Max-Age=3600; Path=/; HttpOnly; Secure; SameSite=Strict`.
-  - La prueba de regresión validó automáticamente la presencia de todos los atributos de protección.
+- **Verificacion:**
+  Se comprobo con `curl -i http://localhost:8080/api/v1/auth/session` que la respuesta incluye `HttpOnly; Secure; SameSite=Strict`.
 
 ---
 
-### Hallazgo F-03: Componentes de Terceros con Vulnerabilidades Conocidas (SCA)
-- **Título:** Dependencias de Node.js desactualizadas sujetas a ReDoS y Denegación de Servicio.
-- **Categoría OWASP / CWE:** OWASP Top 10 A06:2021 — Componentes Vulnerables y Desactualizados | CWE-1333: Inefficient Regular Expression Complexity & CWE-400: Uncontrolled Resource Consumption.
-- **Severidad y Justificación:** **Alta** (Advisories GitHub: GHSA-qwcr-r2fm-qrc7, GHSA-9wv6-86v2-598j). Afecta a `express 4.19.2` y sus dependencias transitivas (`body-parser`, `path-to-regexp`, `qs`, `send`).
-- **Evidencia Técnica:**
-  - `npm audit` reportó 8 vulnerabilidades (3 de severidad alta, 1 moderada, 4 bajas).
-  - Dependabot generó 14 alertas automáticas y 8 Pull Requests de actualización en el repositorio.
-- **Impacto:**
-  - *Disponibilidad:* Alta (ataques de expresiones regulares lentas pueden bloquear el bucle de eventos de Node.js).
-  - *Integridad y Confidencialidad:* Baja.
-- **Medida de Remediación Aplicada:**
-  Se actualizaron las bibliotecas principales a `express@^4.22.3` y `cookie-parser@^1.4.7` en `app/package.json`, asegurando compatibilidad hacia atrás y resolviendo las vulnerabilidades en subdependencias.
-- **Resultado del Reescaneo:**
-  - Ejecución de `npm audit` arrojó: `found 0 vulnerabilities`.
+### Hallazgo 3: Cabeceras HTTP permisivas y falta de proteccion contra Clickjacking
+- **Descripcion:** Faltaban cabeceras de seguridad como `X-Frame-Options` y la cabecera `Content-Security-Policy` tenia habilitado `'unsafe-inline'`. Ademas, se mostraba la cabecera `X-Powered-By`.
+- **Clasificacion:** CWE-1021 / OWASP A05:2021.
+- **Severidad:** Media.
+- **Herramienta que lo detecto:**
+  - OWASP ZAP (Alertas de Content Security Policy y X-Frame-Options).
+- **Correccion aplicada:**
+  Se anadio middleware en `app/server.js` para forzar politicas estrictas:
+  ```javascript
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none';");
+  app.disable('x-powered-by');
+  ```
 
 ---
 
-## 4. Análisis de Falsos Positivos vs. Verdaderos Positivos
-
-1. **Verdadero Positivo — XSS Reflejado en `app/server.js`:**
-   - *Clasificación:* Verdadero Positivo.
-   - *Justificación:* Tanto Semgrep como CodeQL identificaron un flujo de datos real donde la entrada del usuario no confiable (`req.query.q`) alcanzaba la salida del navegador sin una capa intermedia de saneamiento. La confirmación práctica mediante pentesting inocuo corroboró la presencia del fallo.
-2. **Falsa Alarma / Hallazgo Contextual No Crítico — Versionamiento de GitHub Actions:**
-   - *Clasificación:* Riesgo Informacional / Falsa Alarma Operativa.
-   - *Justificación:* Semgrep reportó la regla `github-actions-mutable-action-tag` debido al uso de etiquetas semánticas como `actions/checkout@v4` o `actions/setup-python@v5`. Si bien la regla aconseja fijar hashes SHA inmutables para mitigar riesgos de cadena de suministro teóricos, en el entorno de desarrollo y laboratorio universitario el uso de versiones mayores oficiales es el estándar recomendado para recibir actualizaciones de seguridad transparentes sin comprometer la ejecución de los pipelines.
+### Hallazgo 4: Dependencias vulnerables (SCA)
+- **Descripcion:** La version inicial de `express` (4.19.2) contenia dependencias transitivas con problemas conocidos de ReDoS y Denegacion de Servicio.
+- **Clasificacion:** CWE-1333 / OWASP A06:2021.
+- **Severidad:** Alta.
+- **Herramientas que lo detectaron:**
+  - Dependabot (14 alertas de seguridad).
+  - `npm audit` (8 vulnerabilidades reportadas).
+- **Correccion aplicada:**
+  Se actualizaron las versiones en `app/package.json` a `express@^4.22.3` y `cookie-parser@^1.4.7`.
+- **Verificacion:**
+  Se ejecuto `npm audit` obteniendo `0 vulnerabilities`.
 
 ---
 
-## 5. Reflexión Final y Conclusiones DevSecOps
+## 4. Analisis de falsos positivos y decisiones
 
-1. **Aportes y limitaciones de las herramientas automatizadas:**
-   - *SAST (Semgrep y CodeQL):* Fueron fundamentales para descubrir fallos en etapas tempranas de codificación (Shift-Left). Sin embargo, reglas puramente sintácticas pueden alertar advertencias sobre estructuras de plantillas incluso cuando se emplea codificación segura manual, requiriendo validación experta (triage).
-   - *SCA (Dependabot):* Automatiza de forma sobresaliente el monitoreo del árbol de dependencias transitivas, evitando que bibliotecas vulnerables permanezcan desatendidas. No obstante, se debe validar la compatibilidad antes de fusionar actualizaciones mayores a ciegas.
-   - *DAST (OWASP ZAP):* Evalúa la aplicación en tiempo de ejecución, detectando fallos de transporte, cabeceras de respuesta y comportamiento dinámico que escapan al análisis de código fuente estático.
-2. **Integración en el Ciclo de Vida del Software:**
-   - La implementación de controles como validaciones en Pull Requests (vía GitHub Actions), políticas de branch protection y pruebas unitarias de seguridad automatizadas permite que la seguridad deje de ser un cuello de botella de última hora y se convierta en una propiedad intrínseca y verificable del software desde su origen.
+- **XSS en busqueda:** Verdadero positivo. Se pudo comprobar tanto con las herramientas estaticas (CodeQL y Semgrep) como manualmente enviando una etiqueta `<u>` en la peticion HTTP.
+- **Advertencia de Semgrep sobre tags en GitHub Actions:** Semgrep sugiere usar hashes SHA en lugar de tags (`actions/checkout@v4`). Para un proyecto de laboratorio usamos las versiones oficiales de GitHub, por lo que se acepta esta advertencia sin riesgo para el codigo de la aplicacion.
+
+---
+
+## 5. Conclusiones
+
+1. Las herramientas de analisis estatico como Semgrep y CodeQL permiten identificar vulnerabilidades desde etapas tempranas, pero siempre es necesario validar manualmente los hallazgos para entender el impacto real.
+2. El analisis dinamico con OWASP ZAP complementa al SAST evaluando como responde la aplicacion en ejecucion, especialmente respecto a cabeceras y cookies que no siempre se detectan solo leyendo codigo fuente.
+3. Aplicar una estrategia de defensa en profundidad (sanitizar entradas, proteger cookies y configurar cabeceras) garantiza que si un control falla, los demas evitan un compromiso mayor del sistema.

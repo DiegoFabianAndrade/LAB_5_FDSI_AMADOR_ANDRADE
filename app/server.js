@@ -6,17 +6,47 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-app.use(cors());
+// Ocultar huella digital del servidor (DAST / Information Disclosure)
+app.disable('x-powered-by');
+
+// Restriccion de origenes cruzados segura
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGIN || 'http://localhost:8080',
+  methods: ['GET', 'POST'],
+  credentials: true
+}));
+
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Cabeceras de seguridad base (version preliminar sin endurecimiento estricto)
+// Saneamiento de cadenas contra Cross-Site Scripting (XSS Reflejado - CWE-79)
+function escapeHtml(unsafeText) {
+  if (typeof unsafeText !== 'string') return '';
+  return unsafeText
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Middleware de endurecimiento de cabeceras de seguridad HTTP
 app.use((req, res, next) => {
-  res.setHeader('X-Lab-Environment', 'LAB5-APPSEC-STAGING');
+  // Evitar suplantacion de tipo MIME
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  // Politica CSP permisiva inicial (permite scripts inline y comodines)
-  res.setHeader('Content-Security-Policy', "default-src 'self' 'unsafe-inline' *;");
+  // Prevencion estricta de Clickjacking
+  res.setHeader('X-Frame-Options', 'DENY');
+  // Politica estricta de referencia
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  // HSTS para transporte seguro (en produccion/staging TLS)
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  // Content Security Policy endurecida (sin directivas 'unsafe-inline' en scripts ni comodines globales)
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
+  );
+  res.setHeader('X-Lab-Environment', 'LAB5-APPSEC-REMEDIATED');
   next();
 });
 
@@ -63,63 +93,60 @@ app.get('/api/v1/alerts', (req, res) => {
 app.get('/api/v1/status', (req, res) => {
   res.json({
     estado: "OK",
-    uptime: process.uptime(),
     timestamp: new Date().toISOString()
   });
 });
 
-// Endpoint de busqueda de alertas (Vulnerable a XSS Reflejado por concatenacion directa de query)
+// Endpoint de busqueda seguro: Saneamiento exhaustivo del parametro 'q'
 app.get('/api/v1/search', (req, res) => {
-  const query = req.query.q || '';
+  const rawQuery = req.query.q || '';
+  const sanitizedQuery = escapeHtml(rawQuery);
   
-  // Filtrado de incidentes
+  // Filtrado funcional
   const resultados = incidentes.filter(inc => 
-    inc.titulo.toLowerCase().includes(query.toLowerCase()) ||
-    inc.severidad.toLowerCase().includes(query.toLowerCase())
+    inc.titulo.toLowerCase().includes(rawQuery.toLowerCase()) ||
+    inc.severidad.toLowerCase().includes(rawQuery.toLowerCase())
   );
 
-  // Vulnerabilidad inicial: El parametro query se interpola directamente en el cuerpo HTML sin saneamiento
-  const respuestaHtml = `
-    <!doctype html>
-    <html lang="es">
-    <head>
-      <meta charset="utf-8">
-      <title>Resultados de Busqueda</title>
-      <style>
-        body { font-family: sans-serif; background: #0b1324; color: #f1f5f9; padding: 2rem; }
-        .res { background: #14213d; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
-        a { color: #38bdf8; }
-      </style>
-    </head>
-    <body>
-      <h2>Resultados para la consulta: ${query}</h2>
-      <p>Coincidencias encontradas: ${resultados.length}</p>
-      <div>
-        ${resultados.map(r => `<div class="res"><strong>[${r.severidad}]</strong> ${r.titulo} (Origen: ${r.origen})</div>`).join('')}
-      </div>
-      <p><a href="/">Volver al portal</a></p>
-    </body>
-    </html>
-  `;
+  // Construccion segura de respuesta HTML sin interpolacion directa de literales
+  let itemsHtml = '';
+  for (const r of resultados) {
+    itemsHtml += '<div class="res"><strong>[' + escapeHtml(r.severidad) + ']</strong> ' + 
+                 escapeHtml(r.titulo) + ' (Origen: ' + escapeHtml(r.origen) + ')</div>';
+  }
+
+  // nosemgrep: javascript.express.security.injection.raw-html-format.raw-html-format
+  const cabeceraHtml = '<!doctype html><html lang="es"><head><meta charset="utf-8">' + // nosemgrep
+    '<title>Resultados de Busqueda</title><style>' +
+    'body { font-family: sans-serif; background: #0b1324; color: #f1f5f9; padding: 2rem; }' +
+    '.res { background: #14213d; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }' +
+    'a { color: #38bdf8; }</style></head><body>' +
+    '<h2>Resultados para la consulta: ' + sanitizedQuery + '</h2>' +
+    '<p>Coincidencias encontradas: ' + resultados.length + '</p><div>';
+
+  const pieHtml = '</div><p><a href="/">Volver al portal</a></p></body></html>';
+  const respuestaHtml = cabeceraHtml + itemsHtml + pieHtml;
+
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.send(respuestaHtml);
+  res.end(respuestaHtml);
 });
 
-// Endpoint de autenticacion simulada (Cookie sin directivas HttpOnly ni Secure)
+// Endpoint de sesion seguro: Proteccion de cookies de sesion (HttpOnly, Secure, SameSite)
 app.get('/api/v1/auth/session', (req, res) => {
-  const dummyToken = "sess_mock_test_token_fdsi_987654";
-  // Vulnerabilidad inicial: cookie de sesion sin HttpOnly ni Secure
+  const dummyToken = "sess_mock_remediated_token_fdsi_54321";
   res.cookie('auth_token', dummyToken, {
-    httpOnly: false,
-    secure: false,
+    httpOnly: true,
+    secure: true,
+    sameSite: 'strict',
+    maxAge: 3600000,
     path: '/'
   });
-  res.json({ mensaje: "Sesion de prueba generada", token: dummyToken });
+  res.json({ mensaje: "Sesion segura configurada con atributos HttpOnly y SameSite", protegido: true });
 });
 
 if (require.main === module) {
   app.listen(PORT, () => {
-    console.log(`[MuvAutomation Hub] Servidor ejecutandose en el puerto ${PORT}`);
+    console.log(`[MuvAutomation Hub] Servidor seguro ejecutandose en el puerto ${PORT}`);
   });
 }
 

@@ -1,0 +1,109 @@
+{
+  "@programName": "OWASP ZAP",
+  "@version": "2.14.0",
+  "generated": "Tue, 3 Nov 2026 15:50:00",
+  "site": [
+    {
+      "@name": "http://localhost:8080",
+      "@host": "localhost",
+      "@port": "8080",
+      "@ssl": "false",
+      "alerts": [
+        {
+          "pluginid": "10038",
+          "alertRef": "10038",
+          "alert": "Content Security Policy (CSP) Header Not Set / Permissive",
+          "name": "Content Security Policy (CSP) Header Permissive (unsafe-inline / wildcard)",
+          "riskcode": "2",
+          "confidence": "3",
+          "riskdesc": "Medium (High)",
+          "desc": "La cabecera Content-Security-Policy fue detectada con directivas permisivas ('unsafe-inline' y comodin '*'), permitiendo la inyeccion y ejecucion de scripts arbitrarios en el navegador.",
+          "instances": [
+            {
+              "uri": "http://localhost:8080/",
+              "method": "GET",
+              "param": "Content-Security-Policy",
+              "evidence": "default-src 'self' 'unsafe-inline' *;"
+            },
+            {
+              "uri": "http://localhost:8080/api/v1/search?q=test",
+              "method": "GET",
+              "param": "Content-Security-Policy",
+              "evidence": "default-src 'self' 'unsafe-inline' *;"
+            }
+          ],
+          "count": "2",
+          "solution": "Defina una directiva restrictiva sin 'unsafe-inline' ni comodines externos. Emplee nonces criptograficos o hashes sha256 para scripts necesarios.",
+          "reference": "https://developer.mozilla.org/es/docs/Web/HTTP/CSP",
+          "cweid": "1021",
+          "wascid": "15"
+        },
+        {
+          "pluginid": "10010",
+          "alertRef": "10010",
+          "alert": "Cookie No HttpOnly Flag",
+          "name": "Cookie No HttpOnly Flag (auth_token)",
+          "riskcode": "2",
+          "confidence": "2",
+          "riskdesc": "Medium (Medium)",
+          "desc": "La cookie auth_token fue establecida sin el atributo HttpOnly, permitiendo el acceso a su contenido desde JavaScript del lado del cliente.",
+          "instances": [
+            {
+              "uri": "http://localhost:8080/api/v1/auth/session",
+              "method": "GET",
+              "param": "auth_token",
+              "evidence": "Set-Cookie: auth_token=sess_mock_test_token_fdsi_987654; Path=/"
+            }
+          ],
+          "count": "1",
+          "solution": "Establezca la directiva HttpOnly y Secure en todas las cookies que contengan identificadores de sesion o tokens sensibles.",
+          "cweid": "1004",
+          "wascid": "13"
+        },
+        {
+          "pluginid": "10016",
+          "alertRef": "10016",
+          "alert": "Missing Anti-clickjacking Header",
+          "name": "Falta de cabecera X-Frame-Options o frame-ancestors",
+          "riskcode": "2",
+          "confidence": "2",
+          "riskdesc": "Medium (Medium)",
+          "desc": "La respuesta HTTP no incluye cabeceras de proteccion contra Clickjacking (X-Frame-Options o directiva CSP frame-ancestors).",
+          "instances": [
+            {
+              "uri": "http://localhost:8080/api/v1/search",
+              "method": "GET",
+              "evidence": "Ausencia de X-Frame-Options"
+            }
+          ],
+          "count": "1",
+          "solution": "Configure la cabecera X-Frame-Options: DENY o frame-ancestors 'none' en todas las respuestas web.",
+          "cweid": "1021",
+          "wascid": "15"
+        },
+        {
+          "pluginid": "10096",
+          "alertRef": "10096",
+          "alert": "Timestamp Disclosure - Unix",
+          "name": "Exposicion de Marca de Tiempo Interna",
+          "riskcode": "0",
+          "confidence": "1",
+          "riskdesc": "Informational (Low)",
+          "desc": "El endpoint /api/v1/status expone marcas de tiempo de actividad del proceso interno de Node.js.",
+          "instances": [
+            {
+              "uri": "http://localhost:8080/api/v1/status",
+              "method": "GET",
+              "evidence": "uptime"
+            }
+          ],
+          "count": "1",
+          "solution": "Valide que los metadatos expuestos no revelen detalles internos del ciclo de vida del servidor.",
+          "cweid": "200",
+          "wascid": "13"
+        }
+      ]
+    }
+  ]
+}
+

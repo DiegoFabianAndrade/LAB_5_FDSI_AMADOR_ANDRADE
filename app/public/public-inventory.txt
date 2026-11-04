@@ -19,3 +19,4 @@ LABORATORIO FDSI 2026 - ENTORNO CONTROLADO DE PRUEBAS
    - Hostname: DB-LAB-01
    - IP Interna: 10.0.1.30
    - Rol: Almacenamiento seguro de incidentes y logs de auditoria
+
